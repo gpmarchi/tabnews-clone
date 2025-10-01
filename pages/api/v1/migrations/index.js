@@ -3,41 +3,48 @@ import migrationRunner from 'node-pg-migrate'
 import { join } from 'node:path'
 
 export default async function migrations(request, response) {
-  const dbClient = await database.getNewClient()
-
-  const defaultMigrationOptions = {
-    dbClient,
-    dryRun: true,
-    dir: join('infra', 'migrations'),
-    direction: 'up',
-    verbose: false,
-    migrationsTable: 'pgmigrations',
-  }
-
-  if (request.method === 'DELETE') {
-    console.log('Test database connection leaking...')
-  }
-
-  if (request.method === 'GET') {
-    const pendingMigrations = await migrationRunner(defaultMigrationOptions)
-    await dbClient.end()
-    return response.status(200).json(pendingMigrations)
-  }
-
-  if (request.method === 'POST') {
-    const executedMigrations = await migrationRunner({
-      ...defaultMigrationOptions,
-      dryRun: false,
+  const allowedMethods = ['GET', 'POST']
+  if (!allowedMethods.includes(request.method)) {
+    return response.status(405).json({
+      error: `Method "${request.method}" not allowed`,
     })
+  }
 
-    await dbClient.end()
+  let dbClient
 
-    if (executedMigrations.length > 0) {
-      return response.status(201).json(executedMigrations)
+  try {
+    dbClient = await database.getNewClient()
+
+    const defaultMigrationOptions = {
+      dbClient,
+      dryRun: true,
+      dir: join('infra', 'migrations'),
+      direction: 'up',
+      verbose: false,
+      migrationsTable: 'pgmigrations',
     }
 
-    return response.status(200).json(executedMigrations)
-  }
+    if (request.method === 'GET') {
+      const pendingMigrations = await migrationRunner(defaultMigrationOptions)
+      return response.status(200).json(pendingMigrations)
+    }
 
-  return response.status(405).end()
+    if (request.method === 'POST') {
+      const executedMigrations = await migrationRunner({
+        ...defaultMigrationOptions,
+        dryRun: false,
+      })
+
+      if (executedMigrations.length > 0) {
+        return response.status(201).json(executedMigrations)
+      }
+
+      return response.status(200).json(executedMigrations)
+    }
+  } catch (error) {
+    console.error(error)
+    throw error
+  } finally {
+    await dbClient.end()
+  }
 }
