@@ -14,6 +14,10 @@ export default async function migrations(request, response) {
     migrationsTable: 'pgmigrations',
   }
 
+  if (request.method === 'DELETE') {
+    console.log('Test database connection leaking...')
+  }
+
   if (request.method === 'GET') {
     const pendingMigrations = await migrationRunner(defaultMigrationOptions)
     await dbClient.end()
