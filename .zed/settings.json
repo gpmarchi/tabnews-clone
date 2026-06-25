@@ -1,0 +1,17 @@
+{
+  "languages": {
+    "JavaScript": {
+      "language_servers": ["!biome"]
+    },
+    "TypeScript": {
+      "language_servers": ["!biome"]
+    }
+  },
+  "lsp": {
+    "biome": {
+      "settings": {
+        "require_config_file": true
+      }
+    }
+  }
+}
